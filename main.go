@@ -64,6 +64,7 @@ func main() {
 
 	router.HandleFunc(apiPath,c.getBooks).Methods("GET")
 	router.HandleFunc(apiPath,c.postBook).Methods("POST")
+	router.HandleFunc(apiPath,c.deleteBooks).Methods("DELETE")
 	if err := http.ListenAndServe(":8081", router); err != nil  {
 		log.Fatalf("error while listening: %v", err)
 		return 
@@ -99,6 +100,22 @@ func (c *config) getBooks(w http.ResponseWriter,  r *http.Request) {
 
 	json.NewEncoder(w).Encode(books)
 
+	// close the connection
+	c.CloseConnection(db)
+}
+
+func (c *config) deleteBooks(w http.ResponseWriter, r *http.Request) {
+	// open the connection
+	db := c.OpenConnection()
+	// delete all the books
+	query := "DELETE FROM books"
+	_, err := db.ExecContext(context.Background(),query)
+	if err != nil {
+		log.Fatalf("error deleting all the rows from the table: %v", err.Error())
+	}
+
+	log.Println("Rows deleted successfully!")
+	books = nil
 	// close the connection
 	c.CloseConnection(db)
 }
