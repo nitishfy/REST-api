@@ -65,12 +65,49 @@ func main() {
 	router.HandleFunc(apiPath,c.getBooks).Methods("GET")
 	router.HandleFunc(apiPath,c.postBook).Methods("POST")
 	router.HandleFunc(apiPath,c.deleteBooks).Methods("DELETE")
-	router.HandleFunc(apiPath+"/{id}",c.deleteBook).Methods("DELETE")
+	router.HandleFunc(apiPath+"/{id}",c.deleteBookByID).Methods("DELETE")
 	router.HandleFunc(apiPath+"/{id}",c.getBookByID).Methods("GET")
+	router.HandleFunc(apiPath+"/{id}",c.updateBook).Methods("PUT")
 	if err := http.ListenAndServe(":8081", router); err != nil  {
 		log.Fatalf("error while listening: %v", err)
 		return 
 	}
+}
+
+func (c *config) updateBook(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	id := params["id"]
+
+	var updatedBook Book
+	err := json.NewDecoder(r.Body).Decode(&updatedBook)
+	if err != nil {
+		log.Fatalf("error decoding the request body: %v", err.Error())
+		return 
+	}
+
+	db := c.OpenConnection()
+	defer c.CloseConnection(db)
+
+	var exists bool
+	err = db.QueryRowContext(context.Background(),"SELECT EXISTS(SELECT 1 from books WHERE id = ?)",id).Scan(&exists)
+	if err != nil {
+		log.Printf("error checking if boook with ID %s exists: %v", id, err.Error())
+		return 
+	}
+
+	if !exists {
+		log.Fatalf("Book not found")
+		return
+	}
+
+	query := "UPDATE books SET name = ?, isbn = ? WHERE id = ?"
+	_, err = db.ExecContext(context.Background(),query,updatedBook.Name,updatedBook.Isbn,id)
+	if err != nil {
+		log.Printf("error updating book with ID %s: %v", id,err.Error())
+		return 
+	}
+
+	log.Printf("Book with ID %s updated successfully", id)
 }
 
 func (c *config) getBookByID(w http.ResponseWriter, r *http.Request) {
@@ -94,7 +131,7 @@ func (c *config) getBookByID(w http.ResponseWriter, r *http.Request) {
 	
 }
 
-func (c *config) deleteBook(w http.ResponseWriter, r *http.Request) {
+func (c *config) deleteBookByID(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	id := params["id"]
 	db := c.OpenConnection()
