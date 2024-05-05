@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"database/sql"
 
@@ -61,6 +63,7 @@ func main() {
 	}
 
 	router.HandleFunc(apiPath,c.getBooks).Methods("GET")
+	router.HandleFunc(apiPath,c.postBook).Methods("POST")
 	if err := http.ListenAndServe(":8081", router); err != nil  {
 		log.Fatalf("error while listening: %v", err)
 		return 
@@ -68,6 +71,7 @@ func main() {
 }
 
 func (c *config) getBooks(w http.ResponseWriter,  r *http.Request) {
+	books = []Book{}
 	// open the connection
 	db := c.OpenConnection()
 	// read the boooks
@@ -95,6 +99,37 @@ func (c *config) getBooks(w http.ResponseWriter,  r *http.Request) {
 
 	json.NewEncoder(w).Encode(books)
 
+	// close the connection
+	c.CloseConnection(db)
+}
+
+func (c *config) postBook(w http.ResponseWriter, r *http.Request) {
+	// read the request into an instance of a book
+	book := Book{}
+	json.NewDecoder(r.Body).Decode(&book)
+	// open connection
+	db := c.OpenConnection()
+	// write the data
+	query := "insert into books(id, name, isbn) values (?, ?, ?)"
+	ctx, cancelfunc := context.WithTimeout(context.Background(),5*time.Second)
+	defer cancelfunc()
+	stmt, err := db.PrepareContext(ctx, query)
+	if err != nil {
+		log.Printf("Error %s when preparing SQL statement", err.Error())
+		return
+	}
+    defer stmt.Close()
+	res, err := stmt.ExecContext(ctx, book.ID,book.Name,book.Isbn)
+	if err != nil {
+		log.Printf("Error %s when inserting row into books table", err.Error())
+		return
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		log.Printf("Error %s when finding rows affected", err)
+		return
+	}
+	log.Printf("%d books created ", rows)
 	// close the connection
 	c.CloseConnection(db)
 }
