@@ -65,13 +65,52 @@ func main() {
 	router.HandleFunc(apiPath,c.getBooks).Methods("GET")
 	router.HandleFunc(apiPath,c.postBook).Methods("POST")
 	router.HandleFunc(apiPath,c.deleteBooks).Methods("DELETE")
+	router.HandleFunc(apiPath+"/{id}",c.deleteBook).Methods("DELETE")
+	router.HandleFunc(apiPath+"/{id}",c.getBookByID).Methods("GET")
 	if err := http.ListenAndServe(":8081", router); err != nil  {
 		log.Fatalf("error while listening: %v", err)
 		return 
 	}
 }
 
+func (c *config) getBookByID(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	id := params["id"]
+	db := c.OpenConnection()
+	defer c.CloseConnection(db)
+	query := "select * from books where id = ?"
+	var book Book
+	row := db.QueryRow(query,id)
+	err := row.Scan(&book.ID, &book.Name, &book.Isbn)
+	switch err {
+	case sql.ErrNoRows:
+		log.Println("No rows were returned")
+		return
+	case nil:
+		json.NewEncoder(w).Encode(&book)	
+	default:
+		panic(err)
+	}
+	
+}
+
+func (c *config) deleteBook(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	id := params["id"]
+	db := c.OpenConnection()
+	defer c.CloseConnection(db)
+	query := "DELETE from books where id = ?"
+	_, err := db.ExecContext(context.Background(),query,id)
+	if err != nil {
+		log.Fatalf("error deleting book with the ID %s: %v", id, err)
+		return 
+	}
+
+	log.Printf("Book with ID %s deleted successfully!", id)
+}
+
 func (c *config) getBooks(w http.ResponseWriter,  r *http.Request) {
+	w.Header().Add("Content-Type", "application/json")
 	books = []Book{}
 	// open the connection
 	db := c.OpenConnection()
@@ -115,7 +154,6 @@ func (c *config) deleteBooks(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Println("Rows deleted successfully!")
-	books = nil
 	// close the connection
 	c.CloseConnection(db)
 }
@@ -146,7 +184,7 @@ func (c *config) postBook(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Error %s when finding rows affected", err)
 		return
 	}
-	log.Printf("%d books created ", rows)
+	log.Printf("%d book created ", rows)
 	// close the connection
 	c.CloseConnection(db)
 }
