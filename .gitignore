@@ -1,2 +1,4 @@
 .vscode
 .idea
+manifests/mysql/secret.yaml
+manifests/rest-api/secret.yaml

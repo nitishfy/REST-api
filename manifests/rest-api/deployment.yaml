@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: restapi-deploy
+  name: restapi-deploy
+  namespace: restapi
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: restapi-deploy
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: restapi-deploy
+    spec:
+      containers:
+      - image: nitishkumar06/mysql-api:0.1.0
+        name: mysql-api
+        resources: {}
+        env:
+        - name: DB_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: restapi-cm
+              key: host
+        - name: DB_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: restapi-cm
+              key: dbname
+        - name: DB_PASS
+          valueFrom:
+            secretKeyRef:
+              name: mysql-password
+              key: rootpassword
+status: {}
