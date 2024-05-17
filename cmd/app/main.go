@@ -28,7 +28,7 @@ func main() {
 
 	dbPass := os.Getenv("DB_PASS")
 	if dbPass == "" {
-		dbPass = "nitish"
+		dbPass = "my-deault-password"
 	}
 
 	apiPath := os.Getenv("API_PATH")
